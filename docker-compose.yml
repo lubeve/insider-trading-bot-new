@@ -5,16 +5,27 @@ services:
     build: .
     container_name: insider-trading-bot
     restart: unless-stopped
-    env_file:
-      - .env
+    environment:
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - DEGIRO_USERNAME=${DEGIRO_USERNAME}
+      - DEGIRO_PASSWORD=${DEGIRO_PASSWORD}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./data/insider_trading.db}
+      - CHECK_INTERVAL_MINUTES=${CHECK_INTERVAL_MINUTES:-30}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
-    environment:
-      - DATABASE_URL=sqlite:///data/insider_trading.db
-      - LOG_FILE=/app/logs/bot.log
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - ./.env:/app/.env:ro
+    networks:
+      - insider-bot-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os; exit(0 if os.path.exists('/app/data/insider_trading.db') else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  insider-bot-network:
+    driver: bridge
